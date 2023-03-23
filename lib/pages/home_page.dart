@@ -14,7 +14,7 @@ class HomePage extends StatefulWidget{
 class HomePageState extends State<HomePage>{
 
   final CepService cepService = CepServiceImpl();
-  Cep? cep;
+  Iterable<Cep> ceps = const Iterable.empty();
   final formkey = GlobalKey<FormState>();
   TextEditingController textEditingController = TextEditingController();
   bool loading = false;
@@ -23,6 +23,12 @@ class HomePageState extends State<HomePage>{
   void dispose(){
     textEditingController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getAllCeps();
   }
 
   @override
@@ -53,8 +59,11 @@ class HomePageState extends State<HomePage>{
               child: const CircularProgressIndicator(),
             ),
             Visibility(
-              visible: cep != null,
-              child: Text("${cep?.logradouro}, bairro ${cep?.bairro}, cidade ${cep?.localidade} - ${cep?.uf}")
+              visible: ceps.isNotEmpty,
+              child: Column(
+                children: ceps.map(
+                  (cep) => Text("${cep.logradouro}, bairro ${cep.bairro}, cidade ${cep.localidade} - ${cep.uf}")).toList()
+                )
             )
           ],
         ) 
@@ -69,18 +78,29 @@ class HomePageState extends State<HomePage>{
         setState(() {
           loading = true;
         });
-        cep = await cepService.getCep(textEditingController.text);
-        setState(() {
-          cep = cep;
-          loading = false;
-        });
+        await cepService.save(textEditingController.text);
+        getAllCeps();
       } catch (e) {
         setState(() {
-          cep = null;
           loading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro ao buscar endereço")));
       }
+    }
+  }
+
+  Future getAllCeps() async{
+    try {
+      ceps = await cepService.getAll();
+      setState(() {
+        ceps = ceps;
+        loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Erro ao buscar endereço")));
     }
   }
 
